@@ -628,3 +628,34 @@ fn main() {
 }
 
 ```
+
+## 包、模块
+* packages cargo的功能，使你可以构建、测试和分享包
+* crates 一系列模块的组合，可以生产lib和可执行程序
+* modules 和 use 控制组织、作用域、路径隐私
+* paths 命名 包、函数的命名
+#### crate
+- 编译器一次编译的最小数量的代码 可以包含模块、或其他已编译文件定义的模块
+- crate 分为二进制、library两种类型
+  - 二进制 可执行的 包含main入口   src/main.rs是二进制crate的根 其他crate可放置于src/bin目录下 每个文件是独立的可执行程序
+  - library 没有main函数，不会编译成可执行文件，而是定义函数等被其他项目共享使用的   src/lib.rs是library crate的根 每个package最多只有一个library crate
+- packages 有一个或多个crate组成。一个package包含一个Cargo.toml文件描述如何构建crates。
+- module 模块内的代码 默认是私有的 为了公有访问 pub mod 代替mod 对于模块内的内容同样需要pub
+
+```rust
+// main.rs
+use crate::garden::vegetables::Asparagus; // 引用其他mod的内容
+pub mod garden; // 声明模块查找当前目录下 graden.rs 或者  graden 目录下的 mod.rs
+fn main() {
+    let plnt = Asparagus {};
+    println!("I'm growing {:?}!", plnt);
+}
+
+// garden/garden.rs
+pub mod vegetables; // 声明子模块
+
+// garden/vegetables/vegetables.rs
+#[derive(Debug)]
+pub struct Asparagus {}
+
+```
