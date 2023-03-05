@@ -1,20 +1,21 @@
-use std::fmt::Display;
-
 fn main() {
-    let c = Color(1, 2, 3);
-    println!("{:?}", c);
-    println!("{:#?}", c) // :? 告诉println!使用debug模式的输出
+    let square = Rectangle::square(10);
+    println!("square width:{}, height:{}", square.width, square.height)
 }
 
-// tuple struce 元组结构体
-// 实现 debug接口 或手动实现debug
 #[derive(Debug)]
-struct Color(i32, i32, i32);
-// impl Display for Color {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         write!(f, "{},{},{}", self.0, self.1, self.2)
-//     }
-// }
-// 空的结构体
-// Unit-like structs can be useful when you need to implement a trait on some type but don’t have any data that you want to store in the type itself.
-struct None;
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+impl Rectangle {
+    // 关联函数，不是方法，没有self参数，一般用于new等场景
+    // self返回值，是Rectangle的别名
+    // 需要使用 :: 语法调用
+    fn square(size: u32) -> Self {
+        Self {
+            width: size,
+            height: size,
+        }
+    }
+}

@@ -455,6 +455,9 @@ fn main() {
 // tuple struce 元组结构体
 struct Color(i32, i32, i32);
 impl Display for Color {
+    // &self 可读引用
+    // &mut self 可修改引用
+    // self 发生所属权转移
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{},{},{}", self.0, self.1, self.2)
     }
@@ -464,4 +467,86 @@ impl Display for Color {
 struct None;
 
 ```
+```rs
+// debug 接口使用
+use std::fmt::Display;
 
+fn main() {
+    let c = Color(1, 2, 3);
+    println!("{:?}", c);
+    println!("{:#?}", c) // :? 告诉println!使用debug模式的输出
+}
+
+// tuple struce 元组结构体
+// 实现 debug接口 或手动实现debug
+#[derive(Debug)]
+struct Color(i32, i32, i32);
+// impl Display for Color {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         write!(f, "{},{},{}", self.0, self.1, self.2)
+//     }
+// }
+// 空的结构体
+// Unit-like structs can be useful when you need to implement a trait on some type but don’t have any data that you want to store in the type itself.
+struct None;
+
+```
+```rs
+// dbg
+use std::fmt::Display;
+
+fn main() {
+    let scale = 2;
+    let rect1 = Rectangle {
+        width: dbg!(30 * scale),
+        height: 50,
+    };
+    dbg!(&rect1);
+    // dbg!(rect1);  会发生所属权转移 所以用引用
+    println!("{:?}", rect1) // print使用的就是引用
+}
+
+// output：
+// [src/main.rs:6] 30 * scale = 60
+// [src/main.rs:9] &rect1 = Rectangle {
+//     width: 60,
+//     height: 50,
+// }
+// Rectangle { width: 60, height: 50 }
+
+#[derive(Debug)]
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+
+```
+```rs
+// 结构体关联函数
+use std::fmt::Display;
+
+fn main() {
+    let square = Rectangle::square(10);
+    println!("square width:{}, height:{}", square.width, square.height)
+}
+
+#[derive(Debug)]
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+impl Rectangle {
+    // 关联函数，不是方法，没有self参数，一般用于new等场景
+    // self返回值，是Rectangle的别名
+    // 需要使用 :: 语法调用
+    fn square(size: u32) -> Self {
+        Self {
+            width: size,
+            height: size,
+        }
+    }
+}
+
+```
+
+## 枚举与模式匹配
