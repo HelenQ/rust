@@ -550,3 +550,81 @@ impl Rectangle {
 ```
 
 ## 枚举与模式匹配
+```rust
+// 定义枚举
+fn main() {
+    // 枚举使用
+    let black = Color::BLACK;
+    println!("black:{:?}", black);
+
+    let home = IpAddr::V4(String::from("127.0.0.1"));
+    home.print()
+}
+
+// 枚举声明
+#[derive(Debug)]
+enum Color {
+    BLACK,
+    RED,
+    BLUE,
+}
+
+#[derive(Debug)]
+enum IpAddr {
+    V4(String),
+    V6(String),
+}
+impl IpAddr {
+    fn print(&self) {
+        println!("{:?}", self)
+    }
+}
+
+```
+``` rust
+// option
+fn main() {
+    let val: Option<String> = Some(String::from("hello world"));
+    if val.is_some() {
+        // unwrap内部参数是self，会转移/消耗所属权
+        // println!("{}", val.unwrap())
+    }
+    // match 支持 字符常量、变量名、通配符等
+    match val {
+        None => {
+            println!("none");
+        }
+        // string类型，在Some是会转移所属权
+        Some(x) => {
+            println!("{x}")
+        }
+    }
+
+    let x = 9;
+    let x1 = match x {
+        1 => 1,
+        5 => 100,
+        _ => 0, // 其他默认分支 放在选项最后
+    };
+    println!("{x1}")
+}
+
+```
+```rust
+// if let
+fn main() {
+    let config_max: Option<u8> = None;
+    if let Some(max) = config_max {
+        println!("{max}");
+    } else {
+        println!("none")
+    }
+    // 等价于
+    match config_max {
+        Some(x) => println!("{x}"),
+        _ => println!("none"),
+    }
+    // if let 等价于 if let match中的一个分支 =后面的是match的patten
+}
+
+```
