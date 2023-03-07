@@ -857,3 +857,75 @@ fn main() {
 }
 
 ```
+
+## 错误
+* 可恢复错误 Result<T,E>
+* 不可恢复错误 panic!宏，当程序遇到不可恢复错误是终止执行
+
+#### panic!
+默认情况下，当panic发生时，rust会回退栈调用，并清除方法数据，这个操作有很多工作量，因此，rust允许立马退出，不清除直接退出。可以通过Cargo.toml配置
+```toml
+<!-- release模式下生效 -->
+[profile.release]
+panic = 'abort'
+<!-- 
+cargo run --bin rust --release
+[1]    16764 abort      cargo run --bin rust --release 
+-->
+```
+```rust
+use std::{
+    fs::File,
+    io::{self, ErrorKind},
+};
+
+fn main() {
+    let greet_file = File::open("Cargo1.toml");
+    match greet_file {
+        Ok(file) => println!("{:?}", file),
+        Err(e) => println!("{e}"), // No such file or directory (os error 2)
+    }
+
+    let greeting_file = File::open("Cargo.toml").unwrap_or_else(|error| {
+        if error.kind() == ErrorKind::NotFound {
+            File::create("Cargo.toml").unwrap_or_else(|error| {
+                panic!("Problem creating the file: {:?}", error);
+            })
+        } else {
+            panic!("Problem opening the file: {:?}", error);
+        }
+        // unwrap 如果result的value是ok，返回ok内部的value，如果 是 err，会调用panic
+        // expect panic的提示
+    });
+
+    // ？
+    if let error = is_exist() {
+        println!("{:?}", error);
+    }
+}
+
+fn is_exist() -> Result<File, io::Error> {
+    // ? 如果结果是ok，正常执行，如果结果是err，函数直接返回err提前退出
+    // ? 仅适用于result、option、其他实现了FromResidual的类型
+    let greeting_file = File::open("Cargo.yaml")?;
+    Ok(greeting_file)
+}
+
+fn last_char_of_first_line(text: &str) -> Option<char> {
+    text.lines().next()?.chars().last()
+}
+
+```
+
+```rs
+use std::error::Error;
+use std::fs::File;
+
+// Box<dyn Error> 是一个接口对象  =》 任何类型的error
+fn main() -> Result<(), Box<dyn Error>> {
+    let greeting_file = File::open("hello.txt")?;
+
+    Ok(())
+}
+
+```
