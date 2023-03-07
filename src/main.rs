@@ -1,6 +1,5 @@
-use crate::garden::vegetables::Asparagus;
-pub mod garden;
+use std::collections::HashMap;
+
 fn main() {
-    let plnt = Asparagus {};
-    println!("I'm growing {:?}!", plnt);
+    
 }

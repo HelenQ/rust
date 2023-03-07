@@ -644,6 +644,7 @@ fn main() {
 
 ```rust
 // main.rs
+// src/main.rs 和 src/lib.rs 作为crate的根
 use crate::garden::vegetables::Asparagus; // 引用其他mod的内容
 pub mod garden; // 声明模块查找当前目录下 graden.rs 或者  graden 目录下的 mod.rs
 fn main() {
@@ -657,5 +658,202 @@ pub mod vegetables; // 声明子模块
 // garden/vegetables/vegetables.rs
 #[derive(Debug)]
 pub struct Asparagus {}
+
+```
+
+#### paths
+```rust
+// main.rs
+// 外部module的引用
+use rust::front_of_house as foh; // as 别名
+// 当前crate的引用，以crate开头
+use crate::garden::vegetables::Asparagus;
+pub mod garden;
+fn main() {
+    front_of_house::hosting::add_to_waitlist();
+}
+
+// lib.rs
+pub mod front_of_house {
+    pub mod hosting {
+        pub fn add_to_waitlist() {}
+        fn seat_at_table() {}
+    }
+    mod serving {
+        fn take_order() {
+            // 通过suer使用父模块的内容
+            super::hosting::add_to_waitlist();
+        }
+        fn serve_order() {}
+        fn take_payment() {}
+    }
+    // 父模块不能使用子模块的私有方法
+    // 子模块可以使用祖先（父模块、父模块的父模块、、、）模块的私有方法
+    // pub修饰struct时，属性仍然是默认私有 需要pub修饰field
+    // pub修饰enum时，枚举类型都是public
+}
+pub use crate::front_of_house::hosting;// 重新将hosting导入到当前包  其他文件可通过 rust::hosting::add_to_waitlist(); 使用
+
+
+// use使用方式
+// 1. use std::cmp::Ordering;
+//    use std::io;
+// 2. use std::{cmp::Ordering, io};
+// 3. use std::io::{self, Write};
+// 4. use std::collections::*;
+```
+
+## 集合
+```rust
+// vector 数组
+// string 字符集合
+// hashmap
+fn main() {
+    // 声明数组 : Vec<i32> 类型可省略，编译器可以根据上下文推测
+    // vec是包含 指针、容量、长度 的元组  其中指针指向一块连续空间，当容量==长度，会触发扩容
+    // 初始化是容量0
+    let mut v: Vec<i32> = Vec::new();
+    // push需要对数组操作，需要是可变变量 mut
+    // 扩容机制 max(max(cap*2, required(oldlen+need)), 元素大小（所占用字节数）=1时取8、<1024取4，>1024取1)
+    v.push(1);
+    v.push(2);
+    println!("v len:{}", v.len());
+
+    // 使用宏vec!创建数组
+    let v = vec![1, 2, 3];
+    println!("v len:{}", v.len());
+    // for in 后面是变量引用
+    // 因为vector分配在堆上，每个元素对应地址 &i32
+    for i in &v {
+        println!("{}", i);
+    }
+    let second = v[2];
+    println!("v[2]={}", second);
+
+    let o2 = v.get(2);
+    println!("v[2]={}", o2.unwrap());
+    // v.push(6);  此处是不允许的，因为o2是immutable，push一个元素可能需要重新分配空间，将原数据copy到新空间，o2的内存可能会被回收
+
+    match o2 {
+        Some(x) => println!("v[2]={}", x),
+        None => println!("v[2]=none"),
+    }
+    if let Some(x) = o2 {
+        println!("v[2]={}", x);
+    }
+    let mut v = vec![1, 2, 3];
+    for i in &mut v {
+        // *解引用
+        *i += 5;
+        // *i = *i + 5;
+    }
+    for i in &mut v {
+        // v.pop(); for 循环期间 禁止插入或删除元素
+        println!("{i}");
+    }
+}
+
+```
+
+```rs
+// vector enum
+fn main() {
+    #[derive(Debug)]
+    enum SpreadsheetCell {
+        Int(i32),
+        Float(i64),
+        Text(String),
+    }
+    let row = vec![
+        SpreadsheetCell::Int(3),
+        SpreadsheetCell::Float(30),
+        SpreadsheetCell::Text(String::from("300")),
+    ];
+    for item in &row {
+        println!("{:?}", item);
+    }
+}
+
+```
+
+```rs
+// string
+fn main() {
+    // String 是可以增长的、可变的、有所属权的、UTF-8编码的string类型
+    // &str string slice类型
+    // string类型，底层是一个bytes类型的vector
+    let mut s = String::new();
+
+    let s: &str = "hello world";
+
+    let s = s.to_string();
+    let mut s1 = String::from("hello ");
+    let s2 = "world";
+    s1.push_str(s2); // string slice不需要所属权
+    println!("{s1}");
+    println!("{s2}");
+
+    let s1 = "hello";
+    let s2 = "hello";
+    // "hello" 字符串字面常量 分配在Read Only Memory区 所以s1、s2指向同一个区域
+    // str类型包含两个属性 指针、长度 固定长度 不同于string 分配在堆上 有三个属性 指针、容量、长度
+    // 不能直接操作str所以s1是引用类型
+    assert_eq!(*s1, *s2);
+
+    let s1 = String::from("hello ");
+    let s2 = String::from("world");
+    let s3 = format!("{s1}{s2}");
+    println!("{s3}");
+    let s3 = s1 + &s2; // s1 被消耗 之后不能再使用 + 是调用fn add(self, s: &str) -> String {方法 另外编译器将&string转成&str &s2[..]
+    println!("{s3}");
+
+    let ch = "中国";
+    println!("{}", &ch[0..3]); // 中国所占字节数为6，[0,3)表示中
+
+    // chars
+    for item in ch.chars() {
+        print!("{item}")
+        // 输出 中国
+    }
+    println!();
+    for item in ch.bytes() {
+        println!("{item}")
+    }
+}
+
+```
+```rust
+// hash map
+use std::collections::HashMap;
+
+// hash map
+fn main() {
+    let mut h = HashMap::new();
+    h.insert("1", 1);
+    println!("key:1, v:{}", h.get("1").copied().unwrap());
+    println!("key:1, v:{}", h.get("1").unwrap());
+    // 遍历map
+    for (k, v) in &h {
+        println!("{k}:{v}")
+    }
+
+    let filed_name = String::from("key");
+    let field_value = String::from("value");
+    let mut m = HashMap::new();
+    m.insert(filed_name, field_value);
+    // println!("{filed_name}"); //此处编译错误，因为对于实现了copy接口的类型，如i32，会将值copy到map中，而对于string有所属的类型，会讲value转移到map内
+    // 如果&filed_name将引用传入map，则原field_name不受影响
+    m.insert(String::from("key"), String::from("key")); // 覆盖
+    println!("{:?}", m);
+
+    // entry 返回对应的entry，如果entry存在 返回value的可变引用，如果entry不存在，插入key及对应的value，并返回新value的可变引用
+    println!(
+        "{:?}",
+        m.entry(String::from("key1"))
+            .or_insert(String::from("value"))
+    );
+    println!("{:?}", m);
+
+}
 
 ```
