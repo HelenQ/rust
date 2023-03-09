@@ -1114,3 +1114,104 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     ```
 * lifetimes
+    ```rust
+    fn main() {
+        let r;
+        {
+            let x = 5;
+            // 编译不通过，x引用的生命周期短于r的生命周期
+            // borrowed value does not live long enough
+            // 之后x回收后，r的引用将无效，会导致问题，所以编译器不允许
+            r = &x;
+        }
+        println!("r:{}", r);
+    }
+
+    ```
+    * The Borrow Checker
+      - 比较作用域决定borrow是否有效
+      ```rs
+      // compile error
+        fn main() {
+            let string1 = String::from("abcd");
+            let string2 = "xyz";
+            let result = longest(string1.as_str(), string2);
+            println!("{result}")
+        }
+
+        // &str是string的切片引用
+        // 该函数编译不通过，函数返回一个借用类型的值，但是函数并没有说明是从x或者y借用的
+        fn longest(x: &str, y: &str) -> &str {
+            if x.len() > y.len() {
+                x
+            } else {
+                y
+            }
+        }
+
+      ```
+      - 生命周期参数必须以'开始
+      ```rs
+        <!-- &i32
+        &'a i32
+        &'a mut i32 -->
+
+        fn main() {
+            let string1 = String::from("abcd");
+            let result;
+            {
+                let string2 = "xyz";
+                result = longest(string1.as_str(), string2);
+            }
+            println!("{result}");
+
+            // 静态生命周期
+            // 该字符串存储在程序二进制中，全局有效
+            let s: &'static str = "hello world";
+        }
+
+        // 表示返回值引用有效，只要传入的俩参数有效，并保证只要'a有效，参数x，y就有效，返回值也有效
+        fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
+            if x.len() > y.len() {
+                x
+            } else {
+                y
+            }
+        }
+
+        // 结构体生命周期标注
+        struct A<'a> {
+            part: &'a str,
+        }
+
+        // 部分场景下，rust会自动识别lifetime，可省略生命周期标注 'a
+        fn first_word(s: &str) -> &str {
+            let bytes = s.as_bytes();
+
+            for (i, &item) in bytes.iter().enumerate() {
+                if item == b' ' {
+                    return &s[0..i];
+                }
+            }
+
+            &s[..]
+        }
+        // 当没有显式生命周期标注是，编译器使用一下三种方式识别引用的lifetime，如果仍识别不了这编译报错，第一种适用输入参数，第二、第三适用于返回类型，规则适用于fn函数、impl方法
+        // 1. 编译器分配一个生命周期参数给每一个引用类型的参数 ，foo<'a>(x: &'a i32); foo<'a,'b>(x: &'a i32, y:&'b i32);
+        // 2. 如果参数只有一个，则该生命周期赋予给返回类型 foo<'a>(x:&'a i32)->&'a i32
+        // 3. 如果有多个输入参数，其中一个是&self或&mut self，因为是方法，则self的生命周期被赋予给所有返回值
+
+        use std::fmt::Display;
+        fn longest_with_an_announcement<'a, T>(x: &'a str, y: &'a str, ann: T) -> &'a str
+        where
+            T: Display,
+        {
+            println!("Announcement! {ann}");
+            if x.len() > y.len() {
+                x
+            } else {
+                y
+            }
+        }
+
+      ```
