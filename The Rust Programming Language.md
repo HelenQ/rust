@@ -1215,3 +1215,68 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
 
       ```
+
+## 测试
+* 使用cargo test运行测试用例，默认运行所有类型的测试用例，bin crate、lib crate；--bin bin_name运行指定可执行程序的测试用例；--lib运行lib crate的测试用例；
+* cargo test默认并行运行测试用例，cargo test --help 或者 cargo test -- --help展示help；
+* cargo test -- --test-threads=1 串行执行测试用例
+* cargo test test_name 执行具体测试用例；
+* cargo test -- --ignored 只执行有忽略注解的用例
+* cargo test -- --include-ignored 执行所有用例 包括忽略的
+* 单元测试 通常和代码放在一块，创建一个`tests`模块包含测试函数，并对mod添加cfg[test]; 私有函数也能测试
+* 集成测试 创建tests目录和src同级，tests目录下每个文件都是一个独立的crate，不需要cfg[test];
+```rust
+#[cfg(test)]
+mod tests {
+    use crate::add_two;
+
+    #[test] // 表示是一个测试方法
+    fn add_work() {
+        assert_eq!(3, add_two(1, 2))
+    }
+    #[test]
+    #[should_panic(expected = "panic")] // panic 并且包含expected认为通过
+    fn panic_work() {
+        panic!("panic test");
+    }
+    // test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+    // 0 measured性能测试
+}
+
+```
+```rust
+// 使用Result返回测试结果
+fn main() {}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn it_work() -> Result<(), String> {
+        // 返回Result
+        if 2 + 2 == 4 {
+            Ok(())
+        } else {
+            Err(String::from("error，expect 2+2=4"))
+        }
+    }
+}
+```
+```rs
+fn main() {}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    #[ignore = "reason"] // 忽略执行
+    fn it_work() -> Result<(), String> {
+        // 返回Result
+        if 2 + 2 == 4 {
+            println!("tttttttttttttttt"); // 控制台的输出不会体现在测试结果中，可以通过--show-output控制打印
+            Ok(())
+        } else {
+            Err(String::from("error，expect 2+2=4"))
+        }
+    }
+}
+
+```

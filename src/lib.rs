@@ -1,3 +1,5 @@
+mod tests;
+
 pub mod front_of_house {
     pub mod hosting {
         fn seat_at_table() {}
@@ -11,4 +13,7 @@ pub mod front_of_house {
         fn serve_order() {}
         fn take_payment() {}
     }
+}
+pub fn add_two(first: i32, second: i32) -> i32 {
+    first + second
 }
