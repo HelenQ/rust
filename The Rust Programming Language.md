@@ -1311,3 +1311,101 @@ fn parse_config(args: &[String]) -> (&str, &str) {
 }
 
 ```
+
+## 函数式编程 迭代和闭包
+函数式编程风格：通常包括使用函数作为参数或返回值，或者将函数赋值给变量
+
+* 闭包：匿名函数，当前作用域变量的绑定
+```rust
+use std::default;
+
+fn main() {
+    let opt: Option<i32> = Option::None;
+
+    // 普通的函数传递
+    println!("{}", opt.unwrap_or_else(defult_value));
+
+    // 闭包
+    // || function_name
+    // 其中||中间是闭包需要的参数
+    // 定义闭包 并赋值给变量
+    let default_closure = || -> i32 { 100 };
+    println!("{}", opt.unwrap_or_else(default_closure));
+
+    // 将函数赋值给变量
+    let default_closure = defult_value;
+    println!("{}", opt.unwrap_or_else(default_closure));
+
+    // 闭包调用函数
+    let default_closure = || -> i32 { defult_value() };
+    println!("{}", opt.unwrap_or_else(default_closure));
+
+    // 闭包类型推断
+    let example_closure = |x| x;
+
+    let s = example_closure(String::from("hello"));
+    // let n = example_closure(5); // 此处编译不通过，调用类型不一致
+    println!();
+    // 闭包对变量的借用规则，不可变借用，可变借用，所属权转移
+    // 不可变借用
+    let list = vec![1, 2, 3];
+    println!("Before defining closure:{:?}", list);
+    let only_borrows = || println!("From closure:{:?}", list);
+    println!("Befor calling closure:{:?}", list);
+    only_borrows();
+    println!("After calling closure:{:?}", list);
+    println!();
+    // 可变借用
+    let mut list = vec![1, 2, 3];
+    println!("Before defining closure:{:?}", list);
+    let mut borrows_mutably = || list.push(4);
+    // println!("Befor calling closure:{:?}", list); // 当borrows_mutably定义时，closure持有一个list的可变引用，直到borrows_mutably调用结束后，对list的借用结束，才能继续调用list
+    borrows_mutably();
+    println!("After calling closure:{:?}", list);
+    println!();
+    // 所属权转移
+    let list = vec![1, 2, 3];
+    println!("Before defining closure:{:?}", list);
+    let borrows_move = move || println!("After calling closure:{:?}", list);
+    // println!("Before calling closure:{:?}", list); // 通过move对绑定的变量进行了所属权转移，此处无法在使用list
+    borrows_move();
+    // println!("After calling closure:{:?}", list);
+}
+
+fn defult_value() -> i32 {
+    100
+}
+
+```
+* Fn接口 (如果不需要将上下文中的变量关联到闭包中，可用传递函数代替)
+    * FnOnce 适用于闭包只被调用一次，所有的闭包至少实现一个FnOnce接口，unwrap_or_else
+    * FnMut 适用于闭包没有将关联的变量转移到闭包外，但是可能会改变关联的变量，可以被多次调用, sort_by_key
+    * Fn 适用于闭包，没有将关联变量移动到闭包外，并且不修改关联变量，可被调用多次，适用于并发调用
+* iterators
+    ```rust
+    fn main() {
+        // pub trait Iterator {
+        //     type Item;
+
+        //     fn next(&mut self) -> Option<Self::Item>;
+
+        //     // methods with default implementations elided
+        // }
+
+        let v1 = vec![1, 2, 3];
+
+        // 迭代
+        let mut v1_iter = v1.iter();
+
+        // for val in v1_iter {
+        //     println!("Got: {val}");
+        // }
+
+        assert_eq!(v1_iter.next(), Some(&1));
+        assert_eq!(v1_iter.next(), Some(&2));
+        assert_eq!(v1_iter.next(), Some(&3));
+        assert_eq!(v1_iter.next(), None);
+    }
+
+    ```
+## cargo和crates.io
