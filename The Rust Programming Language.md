@@ -1409,3 +1409,74 @@ fn defult_value() -> i32 {
 
     ```
 ## cargo和crates.io
+* profile
+    * dev 默认 cargo build
+    * release cargo build --release
+    * 默认配置在Cargo.toml文件中。通过`[profile.*]`定制配置或覆盖默认配置
+        ```toml
+        [profile.dev]
+        opt-level = 0
+        ```
+    
+* 发布crate到crates.io
+    * 添加文档注释 会生成 html文档 使用 `///` 注释 正常markdown语法
+    * cargo doc 在target目录下生成html文档
+    * cargo doc --open 在浏览器打开文档
+    * cargo test --doc 会测试`///`中的代码块
+    * `//!`添加文档 通常放在root文件，作为整个模块的注视
+    * 配置crates.io账号
+        * cargo login api_key 通常key保存在～/.cargo/credentials
+    * 添加配置Cargo.toml
+        * 唯一的包名
+            ```toml
+            [package]
+            package_name
+            version = "0.1.0"
+            edition = "2023"
+            description = "_"
+            license = 'MIT OR Apache-2.0'
+            ```
+    * cargo publish  // 发布时永久的，version不能被覆盖，代码不能被删除
+    * 废弃版本 cargo yank --vers 0.1.0 防止新的项目在引用，该版本不会出现在新的Cargo.lock中，原来的不受影响
+    * cargo yank --vers 0.1.0 --undo // 撤销yank
+* cargo工作空间 通过 cargo run -p package 指定运行哪个包
+    * Cargo.toml 
+        ```toml
+        [workspace]
+        members = [
+            "adder",
+            "add_one",
+        ]
+        ```
+    * adder
+        * Cargo.tomal
+            ```tomal
+            [dependencies]
+            add_one = { path = "../add_one" }
+            ```
+        * src
+            * main.rs
+                ```rs
+                use add_one;
+
+                fn main() {
+                    let num = 10;
+                    println!(
+                        "Hello, world! {num} plus one is {}!",
+                        add_one::add_one(num)
+                    );
+                }
+                ```
+    * add_one
+            * Cargo.tomal
+        * src
+            * lib.rs
+                ```rs
+                pub fn add_one(x: i32) -> i32 {
+                    x + 1
+                }
+                ```
+    * target
+* cargo install package_name 安装二进制文件到`~/.cargo/bin`
+
+## 指针

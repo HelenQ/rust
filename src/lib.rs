@@ -1,3 +1,6 @@
+//！#My Crate
+//!
+//! rust
 mod tests;
 
 pub mod front_of_house {
@@ -14,6 +17,10 @@ pub mod front_of_house {
         fn take_payment() {}
     }
 }
+/// ```
+/// let x = rust::add_two(1,2);
+/// assert_eq!(3, x);
+/// ```
 pub fn add_two(first: i32, second: i32) -> i32 {
     first + second
 }
