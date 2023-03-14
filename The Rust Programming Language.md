@@ -1480,3 +1480,245 @@ fn defult_value() -> i32 {
 * cargo install package_name 安装二进制文件到`~/.cargo/bin`
 
 ## 指针
+
+  指针，包含内存地址的变量，在rust中，引用是一种普通的指针，通过`&`表示，并从借用指向的数据
+
+  smart pointers，是一个结构体，类似一个指针，但是还有其他额外的元数据及能力。rust提供了多种smart指针，其功能超过不通的引用，其中包含 引用计数指针（该类型的指针能够允许有多个owner，当没有owner时，清理数据）
+
+  smart指针通常使用结构体实现，不同于传统的结构体，smart指针实现了deref和drop接口。其中deref结构，允许该类型的实例像普通引用一样操作。drop接口，允许当smart指针超过作用域时实现自定义操作。
+
+* `Box<T>` 实现了Deref、Drop接口
+    - 使用`Box<T>`指向堆上的数据
+        使用场景
+        * 大小在编译时不确定的类型、上下文需要确定具体大小
+        * 大数据所属权转移，而不发生copy的情况
+        * 当你想拥有一个数据，只在意是否实现了某一接口，而不关心具体类型
+    - 自定义Box，实现Deref接口
+        ```rust
+        use std::ops::Deref;
+
+        fn main() {
+            let b = Box::new(5);
+            // 当b被清理时，其指向的堆空间也会被清理
+            println!("b={b}");
+            assert_eq!(5, *b);
+
+            // 自定义box
+            let b = MyBox::new(5);
+            // 当b被清理时，其指向的堆空间也会被清理
+            println!("b={:?}", b);
+            assert_eq!(5, *b);
+            assert_eq!(5, *(b.deref()));
+        }
+
+        #[derive(Debug)]
+        struct MyBox<T>(T);
+
+        impl<T> MyBox<T> {
+            fn new(x: T) -> MyBox<T> {
+                MyBox(x)
+            }
+        }
+        // 没有deref接口的实现，编译器只能堆&引用进行解引用
+        impl<T> Deref for MyBox<T> {
+            // 定义一个关联类型为Deref接口
+            type Target = T;
+
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+
+        ```
+    - 解引用协变，将一个实现了deref接口的引用转换成另一个引用类型。例如，将&String转换成&str
+    - from &T to &U when T: Deref<Target=U>
+    - from &mut T to &mut U when T: Deref<Target=U>
+    - from &mut T to &U when T: Deref<Target=U>
+    - 实现Drop接口
+        ```rs
+        fn main() {
+            // 变量删除顺序 与 创建顺序相反
+            let s1 = S {
+                data: String::from("s1"),
+            };
+            let s2 = S {
+                data: String::from("s2"),
+            };
+            // 不允许显示调用s1.drop()
+            drop(s1);
+        }
+        struct S {
+            data: String,
+        }
+        impl Drop for S {
+            fn drop(&mut self) {
+                println!("{}", self.data);
+            }
+        }
+
+        ```
+* Rc<T>  reference counting类型引用，能够拥有多个所属权ownership
+    - 通常一个数据仅属于一个owner，但是有些时候，比如在图结构中，一个点同时被多个边引用，节点不应该被回收，除非所有边都不在引用该节点
+    - 当引用为0时，数据被清理
+    - 分配在堆上的数据，为多个owner，编译时不能确定谁最后完成对数据的使用
+    - 在单线程中使用，多线程中需要特殊处理，见并发模块
+    ```rs
+    use crate::List::{Cons, Nil};
+    use std::rc::Rc;
+    fn main() {
+        // 初始化1
+        let a = Rc::new(Cons(5, Rc::new(Cons(10, Rc::new(Nil)))));
+        // Rc::clone 不进行深拷贝，只是增加引用计数
+        let b = Cons(3, Rc::clone(&a));
+        {
+            let c = Cons(4, Rc::clone(&a));
+            println!("a:reference count:{}", Rc::strong_count(&a));
+        }
+        //
+        println!("a:reference count:{}", Rc::strong_count(&a));
+        println!("a:reference count:{}", Rc::weak_count(&a));
+    }
+    enum List {
+        Cons(i32, Rc<List>),
+        Nil,
+    }
+    ```
+    - RefCell和内部可变规则，内部可变规则允许你修改数据，即使引用是不可变的。为了修改数据，内部使用了unsafe代码。unsafe代码指示我们会手动check规则，而不是依赖编译器
+    - Box<T>借用规则是在编译时，而RefCell<T>是在运行时，编译时如果违反借用规则，将编译错误，而运行时违反规则会panic并退出，同Rc<T>类似，RefCell仅适用于单线程场景。
+    - Box允许可变和不可变借用通过编译时检查，Rc也是在编译时检查是不可变引用，RefCell是运行时检查，可以是可变也可以是不可变
+    - 内部可变规则，可变的借用 从 不可变的值，
+        ```rs
+        use std::cell::RefCell;
+
+        fn main() {
+            let v = RefCell::new(S1 { value: 1 });
+            let mut v1 = v.borrow_mut();
+            // let mut v2 = v.borrow_mut(); // 不运行多于一个引用 thread 'main' panicked at 'already borrowed: BorrowMutError', src/main.rs:6:17
+            v1.value = 2;
+            println!("{:?}", v1);
+        }
+
+        #[derive(Debug)]
+        struct S1 {
+            value: i32,
+        }
+        ```
+* Ref<T>和RefMut<T> 通过RefCell<T>访问，强制使用运行时borrowing规则，而不是编译时规则
+    - 由于引用存在循环引用，可能会导致内存泄漏。
+    - 使用Weak<T>防止循环引用。弱引用不影响数据的清理，当对应的强引用为0时，弱引用关系被打破。Rc::downgrade会返回一个弱引用，每次调用downgrade弱引用计数会加1. 使用场景，树结构，父节点对子节点强引用，子节点对父节点弱引用。
+
+## 并发
+
+  - Rust标准库使用1:1的线程模型，一个rust线程对应一个操作系统线程，可通过其他包实现其他模型。
+  - thread::spawn(closure) 创建线程
+  - thread::sleep、thread::spawn(closure).join().unwrap()在当前线程等待spawn线程完成
+    ```rs
+    use std::thread;
+
+    fn main() {
+        let v = vec![1, 2, 3];
+        // 使用move转移变量所属权
+        let handle = thread::spawn(move || {
+            println!("{:?}", v);
+        });
+        handle.join().unwrap();
+    }
+
+    ```
+  - 使用Message在线程中传递数据
+    - mpsc::channel() mpsc表示多个生产者一个消费者。该函数返回一个元组(transmitter, receiver)。一旦将消息放入channel，将不在拥有消息，所属权被转移
+        ```rs
+        use std::{sync::mpsc, thread};
+
+        fn main() {
+            let (tx, rx) = mpsc::channel();
+
+            thread::spawn(move || {
+                let val = String::from("hi");
+                tx.send(val).unwrap();
+                // println!("{val}"); // error[E0382]: borrow of moved value: `val`
+            });
+            let received = rx.recv().unwrap();
+            println!("{received}")
+        }
+
+        ```
+        ```rs
+        use std::sync::mpsc;
+        use std::thread;
+        use std::time::Duration;
+
+        fn main() {
+            let (tx, rx) = mpsc::channel();
+            // let tx1 = tx.clone(); 复制多个生产者
+            thread::spawn(move || {
+                let vals = vec![
+                    String::from("hi"),
+                    String::from("from"),
+                    String::from("the"),
+                    String::from("thread"),
+                ];
+
+                for val in vals {
+                    tx.send(val).unwrap();
+                    thread::sleep(Duration::from_secs(1));
+                }
+            });
+            // 接收方逐个等待接收
+            // 迭代接收，当channel closed，迭代结束
+            for received in rx {
+                println!("Got: {received}");
+            }
+        }
+
+        ```
+    - 共享状态 
+        - mutex 互斥锁 运行同一时间仅一个线程访问数据。
+            ```rs
+            use std::sync::Mutex;
+
+            fn main() {
+                let mux = Mutex::new(5);
+                {
+                    // lock 阻塞方法 不一定会获取到，所以通过unwrap如果失败会panic
+                    let mut num = mux.lock().unwrap();
+                    *num = 6;
+                    // lock返回的是smart引用 所以失去作用域，锁将会被释放
+                }
+                println!("{:?}", mux)
+            }
+
+            ```
+        - 多线程 使用`Arc<T>`
+            ```rs
+            use std::{
+                rc::Rc,
+                sync::{Arc, Mutex},
+                thread,
+            };
+
+            fn main() {
+                // Rc并不是线程安全的引用，多线程需要使用 atomic reference counting Arc<T>
+                let counter = Arc::new(Mutex::new(0));
+                let mut handles = vec![];
+
+                for _ in 0..10 {
+                    let counter = Arc::clone(&counter);
+                    let handle = thread::spawn(move || {
+                        let mut num = counter.lock().unwrap();
+                        *num += 1;
+                    });
+                    handles.push(handle);
+                }
+                for handle in handles {
+                    handle.join().unwrap();
+                }
+                println!("Result:{}", counter.lock().unwrap());
+            }
+
+            ```
+        - 通过Send、Sync接口扩展并发能力
+            - Send接口可以是变量的所属权在多线程之间转移。几乎所有的类型都实现了send接口，除了Rc<T>。只包含send类型的类型会自动实现send接口
+            - Sync允许多线程访问 任何类型T是Sync的，如果&T(不可变引用)是send的，意味着引用可以被安全的send到其他线程，基本类型都是sync的，如果只有sync的类型组成一个新类型，新类型也是sync的，Rc<T>不是sync
+
+## 面向对象
