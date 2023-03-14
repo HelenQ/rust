@@ -1722,3 +1722,560 @@ fn defult_value() -> i32 {
             - Sync允许多线程访问 任何类型T是Sync的，如果&T(不可变引用)是send的，意味着引用可以被安全的send到其他线程，基本类型都是sync的，如果只有sync的类型组成一个新类型，新类型也是sync的，Rc<T>不是sync
 
 ## 面向对象
+
+- 面向对象语言的特点
+
+    - 对象包含数据和行为
+    - 封装，隐藏实现细节
+    - 继承
+
+## 模式与匹配
+
+- 支持类型，字符字面量、数组、枚举、结构体、元组、变量、通配符、占位符
+    ```rust
+    match VALUE {
+        PATTERN => EXPRESSION,
+        PATTERN => EXPRESSION,
+        PATTERN => EXPRESSION,
+        // _ 匹配任何内容，会忽略value，通常作为最后一个分支
+    }
+    ```
+    ```rs
+    fn main() {
+        let mut stack = Vec::new();
+
+        stack.push(1);
+        stack.push(2);
+        stack.push(3);
+
+        while let Some(top) = stack.pop() {
+            println!("{top}");
+        }
+
+        let v = vec!['a', 'b', 'c'];
+
+        for (index, value) in v.iter().enumerate() {
+            println!("{value} is at index {index}");
+        }
+    }
+    ```
+    ```rs
+    fn print_coordinates(&(x, y): &(i32, i32)) {
+        println!("Current location: ({x}, {y})");
+    }
+
+    fn main() {
+        let point = (3, 5);
+        print_coordinates(&point);
+    }
+
+    ```
+    ```rust
+    fn main() {
+        let x = 1;
+        // matching literals
+        match x {
+            1 => println!("one"),
+            _ => println!("other"),
+        }
+
+        let x = Some(5);
+        let y = 10;
+        // matching named variables
+        match x {
+            Some(50) => println!("got 50"),
+            // 新作用域的y 代表匹配的值
+            Some(y) => println!("matched, y={}", y),
+            _ => println!("default case:{:?}", x),
+        }
+        println!("at the end: x = {:?}, y = {y}", x);
+
+        let x = 1;
+        match x {
+            // 多匹配
+            1 | 2 => println!("one or two"),
+            3 => println!("three"),
+            _ => println!("anything"),
+        }
+
+        // ..=语法
+        let x = 5;
+        match x {
+            // 1,2,3,4,5都会匹配搭配1..5分支
+            // 1｜2｜3｜4｜5
+            1..=5 => println!("one through five"),
+            _ => println!("something else"),
+        }
+
+        struct Point {
+            x: i32,
+            y: i32,
+        }
+        let p = Point { x: 0, y: 7 };
+        // 结构体分解
+        let Point { x: a, y: b } = p;
+        assert_eq!(0, a);
+        match p {
+            Point { x, y: 0 } => println!("on the x axis at {x}"),
+            Point { x: 0, y } => println!("on the y axis at {y}"),
+            Point { x, y } => {
+                println!("on neither axis:({x},{y})")
+            }
+        }
+        match p {
+            // 使用..忽略剩余的
+            Point { x, .. } => println!("x:{}", x),
+        }
+        enum Color {
+            Rgb(i32, i32, i32),
+            Hsv(i32, i32, i32),
+        }
+        enum Message {
+            Quit,
+            Move { x: i32, y: i32 },
+            Write(String),
+            ChangeColor(Color),
+        }
+
+        let msg = Message::ChangeColor(Color::Hsv(0, 160, 255));
+        match msg {
+            Message::Quit => {
+                println!("The Quit variant has no data to destructure.");
+            }
+            Message::Move { x, y } => {
+                println!("Move in the x dir {x}, in the y dir {y}");
+            }
+            Message::Write(text) => {
+                println!("Text message: {text}");
+            }
+            // 嵌套分解，..忽略连续内容
+            Message::ChangeColor(Color::Hsv(r, .., b)) => {
+                println!("Change color to red {r}, green _, and blue {b}")
+            }
+            _ => (),
+        }
+        let ((feet, inches), Point { x, y }) = ((3, 10), Point { x: 3, y: -10 });
+    }
+
+    ```
+    ```rs
+    fn main() {
+        // match guard 使用额外的if语句
+        let num = Some(4);
+        match num {
+            Some(x) if x % 2 == 0 => println!("the number is even"),
+            Some(x) => println!("the number {x} is odd"),
+            None => (),
+        }
+    }
+
+    ```
+    ```rs
+    fn main() {
+        // @ Bindings 创建一个变量，同时测试@后的条件是否匹配
+        enum Message {
+            Hello { id: i32 },
+        }
+        let msg = Message::Hello { id: 11 };
+        match msg {
+            Message::Hello {
+                id: id_variable @ 3..=7,
+            } => println!("Found an id in range: {id_variable}"),
+            Message::Hello { id: 10..=12 } => {
+                println!("Found an id in another range")
+            }
+            Message::Hello { id } => println!("Some other id: {id}"),
+        }
+    }
+
+    ```
+## 高级功能
+
+  - Unsafe 
+    - 解引用一个原始的指针
+        ```rust
+        fn main() {
+            // smart引用和原始引用的区别
+            // 原始引用
+            // 不保证指向的是有效内存
+            // 允许为null
+            // 没有实现任何自动清理接口
+            // 允许忽略借用规则，可以同时拥有不可变和可变的指针，或多个指向相同位置的可变指针
+            let mut num = 5;
+            // 使用as将不可变和可变引用转换成相应的原始指针类型。
+            // 默认编译器不允许 可变引用和不可变引用同时指向一个区域
+            let r1 = &num as *const i32;
+            let r2 = &mut num as *mut i32;
+
+            // 不能够解引用原始指针
+            // let address = 0x012345usize;
+            // let r = address as *const i32;
+            // println!("{:?}", *r);
+
+            unsafe {
+                let address = r2;
+                let r = address as *const i32;
+                println!("{:?}", *r);
+            }
+        }
+
+        ```
+    - 调用unsafe函数或方法
+        ```rust
+        fn main() {
+            unsafe {
+                // 调用unsafe方法需要unsafe声明
+                danngerous();
+            }
+        }
+
+        unsafe fn danngerous() {}
+
+        ```
+        ```rust
+        use std::slice;
+
+        fn main() {
+            let mut v = vec![1, 2, 3, 4, 5, 6];
+
+            let r = &mut v[..];
+
+            let (a, b) = r.split_at_mut(3);
+
+            assert_eq!(a, &mut [1, 2, 3]);
+            assert_eq!(b, &mut [4, 5, 6]);
+        }
+
+        fn split_at_mut(values: &mut [i32], mid: usize) -> (&mut [i32], &mut [i32]) {
+            let len = values.len();
+
+            assert!(mid <= len);
+            // values借用两次 编译失败
+            // (&mut values[..mid], &mut values[mid..])
+
+            let ptr = values.as_mut_ptr();
+
+            unsafe {
+                (
+                    slice::from_raw_parts_mut(ptr, mid),
+                    slice::from_raw_parts_mut(ptr.add(mid), len - mid),
+                )
+            }
+        }
+        ```
+        ```rs
+        let address = 0x01234usize;
+        let r = address as *mut i32;
+        // 非法访问
+        let values: &[i32] = unsafe { slice::from_raw_parts_mut(r, 10000) };
+        println!("{:?}", values);
+        ```
+        ```rust
+        fn main() {
+            unsafe { println!("Absolute value of -3 according to C: {}", abs(-3)) }
+        }
+        // 引入外部函数
+        extern "C" {
+            fn abs(input: i32) -> i32;
+        }
+
+        // 其他语言调用rust函数
+        #[no_mangle] // 告诉编译器不要mangle方法名
+        pub extern "C" fn call_from_c() {
+            println!("just called a Rust function from C");
+        }
+
+        ```
+    - 访问或修改可变静态变量
+        ```rust
+        static HELLO_WORLD: &str = "Hello World";
+        static mut COUNTER: u32 = 0;
+
+        fn main() {
+            println!("value is :{}", HELLO_WORLD);
+            // 常量和不可变静态变量
+            // 静态变量在内存中有固定的地址  可以说可变类型 使用unsafe修改
+            // constants 使用时复制
+
+            add_to_count(3);
+            unsafe {
+                println!("counter: {COUNTER}");
+            }
+        }
+        fn add_to_count(inc: u32) {
+            unsafe {
+                COUNTER += inc;
+            }
+        }
+
+        ```
+    - 实现unsafe接口 使用unsafe实现一个unsafe接口，一个unsafe接口至少有个一个方法包含编译器无法严重的不变式；例如：一个类型中既包含实现send、sync的类型，同时包含未实现send、sync的类型，编译器验证时，可以通过unsafe标记手动检查
+    - 访问unnios属性
+        - union和结构体struct相似，但是使用时 只声明一个属性。参考C语言的union
+  - 高级接口 关联类型、默认类型参数、全限定语法、子接口、newtype模式
+    ```rust
+    fn main() {
+        let mut counter = Counter::new(0);
+        println!("{:?}", counter.next().unwrap_or(-1));
+        println!("{:?}", counter.next().unwrap_or(-1));
+        println!("{:?}", counter.next().unwrap_or(-1));
+        println!("{:?}", counter.next().unwrap_or(-1));
+        println!("{:?}", counter.next().unwrap_or(-1));
+        println!("{:?}", counter.next().unwrap_or(-1));
+    }
+
+    pub trait Iterator {
+        // 接口类型占位符 在实现中必须指明具体类型，不需要关心具体实现 直到接口具体实现
+        type Item;
+        fn next(&mut self) -> Option<Self::Item>;
+    }
+    struct Counter {
+        count: i32,
+    }
+    impl Counter {
+        fn new(count: i32) -> Counter {
+            Counter { count: 0 }
+        }
+    }
+    impl Iterator for Counter {
+        type Item = i32;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            if self.count < 5 {
+                self.count += 1;
+                Some(self.count)
+            } else {
+                None
+            }
+        }
+    }
+
+    ```
+    ```rs
+    use std::ops::Add;
+
+    #[derive(Debug, Copy, Clone, PartialEq)]
+    struct Point {
+        x: i32,
+        y: i32,
+    }
+    // Rhs默认类型
+    // trait Add<Rhs=Self> {
+    //     type Output;  // 关联类型
+
+    //     fn add(self, rhs: Rhs) -> Self::Output;
+    // }
+    // 通过Add接口实现+运算符的重载
+    impl Add<Point> for Point {
+        type Output = Point;
+
+        fn add(self, other: Point) -> Point {
+            Point {
+                x: self.x + other.x,
+                y: self.y + other.y,
+            }
+        }
+    }
+
+    fn main() {
+        assert_eq!(
+            Point { x: 1, y: 0 } + Point { x: 2, y: 3 },
+            Point { x: 3, y: 3 }
+        );
+    }
+
+    ```
+    ```rs
+    fn main() {
+        let person = Human;
+        Pilot::fly(&person);
+        Wizard::fly(&person);
+        // 默认优先调用该类型的实现
+        person.fly();
+    }
+    trait Pilot {
+        fn fly(&self);
+    }
+
+    trait Wizard {
+        fn fly(&self);
+    }
+
+    struct Human;
+
+    impl Pilot for Human {
+        fn fly(&self) {
+            println!("This is your captain speaking.");
+        }
+    }
+
+    impl Wizard for Human {
+        fn fly(&self) {
+            println!("Up!");
+        }
+    }
+
+    impl Human {
+        fn fly(&self) {
+            println!("*waving arms furiously*");
+        }
+    }
+
+    ```
+    ```rs
+    trait Animal {
+        fn baby_name() -> String;
+    }
+
+    struct Dog;
+
+    impl Dog {
+        fn baby_name() -> String {
+            String::from("Spot")
+        }
+    }
+
+    impl Animal for Dog {
+        fn baby_name() -> String {
+            String::from("puppy")
+        }
+    }
+
+    fn main() {
+        // 优先使用当前类型的实现
+        println!("A baby dog is called a {}", Dog::baby_name());
+        // 全限定名使用接口的方法实现
+        // <Type as Trait>::function(receiver_if_method, next_arg, ...);
+        println!("A baby dog is called a {}", <Dog as Animal>::baby_name());
+    }
+
+    ```
+    - 子接口
+        ```rust
+        use std::fmt;
+
+        // 子接口限定  实现OutlinePrint接口 依赖display接口
+        trait OutlinePrint: fmt::Display {
+            fn outline_print(&self) {
+                let output = self.to_string();
+                let len = output.len();
+                println!("{}", "*".repeat(len + 4));
+                println!("*{}*", " ".repeat(len + 2));
+                println!("* {} *", output);
+                println!("*{}*", " ".repeat(len + 2));
+                println!("{}", "*".repeat(len + 4));
+            }
+        }
+        struct Point {
+            x: i32,
+            y: i32,
+        }
+
+        impl OutlinePrint for Point {
+            fn outline_print(&self) {
+                let output = self.to_string();
+                let len = output.len();
+                println!("{}", "*".repeat(len + 4));
+                println!("*{}*", " ".repeat(len + 2));
+                println!("* {} *", output);
+                println!("*{}*", " ".repeat(len + 2));
+                println!("{}", "*".repeat(len + 4));
+            }
+        }
+
+        impl fmt::Display for Point {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                write!(f, "({}, {})", self.x, self.y)
+            }
+        }
+        fn main() {}
+
+        ```
+
+    - newtype
+        ```rs
+        use std::fmt;
+
+        struct Wrapper(Vec<String>);
+
+        impl fmt::Display for Wrapper {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                write!(f, "[{}]", self.0.join(", "))
+            }
+        }
+
+        fn main() {
+            let w = Wrapper(vec![String::from("hello"), String::from("world")]);
+            println!("w = {w}");
+        }
+
+        ```
+        ```rs
+        use core::panicking::panic;
+
+        fn main() {
+            // 别名
+            type Kilometers = i32;
+            let x: i32 = 5;
+            let y: Kilometers = 5;
+            println!("x + y = {}", x + y);
+
+            //
+        }
+
+        // ! 从不返回，在不返回任何内容的时候的返回值
+        fn bar() -> ! {
+            panic!("expr")
+        }
+
+        ```
+  - 高级函数和闭包 函数指针，返回值闭包
+    ```rs
+    fn add_one(x: i32) -> i32 {
+        x + 1
+    }
+
+    // 不同于闭包closure，f是一个类型 而不是 接口
+    // 函数指针实现了 Fn、FnMut、FnOnce，所以可以当做闭包使用
+    // 函数指针 fn 类型 fn(i32) -> i32
+    fn do_twice(f: fn(i32) -> i32, arg: i32) -> i32 {
+        f(arg) + f(arg)
+    }
+    fn tos(i: &i32) -> String {
+        i.to_string()
+    }
+    fn main() {
+        let answer = do_twice(add_one, 5);
+
+        println!("The answer is: {answer}");
+
+        let list_of_numbers = vec![1, 2, 3];
+        // tos 用函数代替闭包
+        let list_of_strings: Vec<String> = list_of_numbers.iter().map(tos).collect();
+        println!("{:?}", list_of_strings);
+
+        let list_of_statuses: Vec<Status> = (0u32..20).map(Status::Value).collect();
+
+        // 闭包是以接口的形式呈现，返回值不能是闭包，需要是你要发挥的接口
+        // 闭包不是具体类型 不能作为返回值
+    }
+    enum Status {
+        Value(u32),
+        Stop,
+    }
+
+    // 不能编译 不知道返回内容的大小size
+    // fn returns_closure() -> dyn Fn(i32) -> i32 {
+    //     |x| x + 1
+    // }
+
+    // 可以编译
+    fn returns_closure() -> Box<dyn Fn(i32) -> i32> {
+        Box::new(|x| x + 1)
+    }
+
+    ```
+  - 宏 https://veykril.github.io/tlborm
+    - 三种方式
+
+## web server
